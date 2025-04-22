@@ -26,19 +26,22 @@ class SaliconDataset(Dataset):
 
         # image resolution
         h, w = mat_data["resolution"][0]
-        heatmap = np.zeros((h, w), dtype=np.float32)
 
-        # add Gaussian blobs to each fixation point from all subjects
-        for subj in mat_data["gaze"][0]:
-            fixations = subj["fixations"]
-            for x, y in fixations:
-                if 0 <= int(y) < h and 0 <= int(x) < w:
-                    heatmap[int(y), int(x)] += 1
+        if "gaze" in mat_data:
+            heatmap = np.zeros((h, w), dtype=np.float32)
 
-        # normalize and blur
-        heatmap = cv2.GaussianBlur(heatmap, (0, 0), sigmaX=10)
-        heatmap = heatmap / heatmap.max() if heatmap.max() > 0 else heatmap
-        sal = Image.fromarray((heatmap * 255).astype(np.uint8)).convert("L")
+            for subj in mat_data["gaze"][0]:
+                fixations = subj["fixations"]
+                for x, y in fixations:
+                    if 0 <= int(y) < h and 0 <= int(x) < w:
+                        heatmap[int(y), int(x)] += 1
+
+            heatmap = cv2.GaussianBlur(heatmap, (0, 0), sigmaX=10)
+            heatmap = heatmap / heatmap.max() if heatmap.max() > 0 else heatmap
+            sal = Image.fromarray((heatmap * 255).astype(np.uint8)).convert("L")
+        else:
+            # no gaze = dummy saliency map (black)
+            sal = Image.fromarray(np.zeros((h, w), dtype=np.uint8)).convert("L")
 
         if self.transform:
             img = self.transform(img)
